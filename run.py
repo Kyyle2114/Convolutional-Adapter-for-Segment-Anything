@@ -100,6 +100,10 @@ def main(rank, opts) -> str:
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
     sam.cuda(local_gpu_id)
     
+    # if multi-gpu training, use SyncBatchNorm
+    if opts.dist:
+        sam = nn.SyncBatchNorm.convert_sync_batchnorm(sam)
+    
     ### Trainable config ###
     for _, p in sam.image_encoder.named_parameters():
         p.requires_grad = False
