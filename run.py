@@ -14,6 +14,7 @@ from torch.nn.parallel import DistributedDataParallel
 
 import os
 import argparse
+import wandb
 from datetime import datetime
 from torchinfo import summary
 
@@ -32,14 +33,15 @@ def str2bool(v):
 
 def get_args_parser():
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument('--batch_size', type=int, default=1)
-    parser.add_argument('--port', type=int, default=2024)
-    parser.add_argument('--dist', type=str2bool, default=True)
-    parser.add_argument('--seed', type=int, default=21)
-    parser.add_argument('--model_type', type=str, default='vit_t')
-    parser.add_argument('--checkpoint', type=str, default='sam_vit_t.pt')
-    parser.add_argument('--epoch', type=int, default=10)
-    parser.add_argument('--lr', type=float, default=2e-4)
+    parser.add_argument('--batch_size', type=int, default=1, help='batch size allocated to each GPU')
+    parser.add_argument('--port', type=int, default=1234, help='port number for distributed learning')
+    parser.add_argument('--dist', type=str2bool, default=True, help='if True, use multi-gpu(distributed) training')
+    parser.add_argument('--seed', type=int, default=21, help='random seed')
+    parser.add_argument('--model_type', type=str, default='vit_t', help='SAM model type')
+    parser.add_argument('--checkpoint', type=str, default='sam_vit_t.pt', help='SAM model checkpoint')
+    parser.add_argument('--epoch', type=int, default=10, help='total epoch')
+    parser.add_argument('--lr', type=float, default=2e-4, help='initial learning rate')
+    parser.add_argument('--project_name', type=str, default='CAD-for-SAM', help='WandB project name')
     parser.add_argument('--local_rank', type=int)
     
     return parser
@@ -52,16 +54,20 @@ def main(rank, opts) -> str:
     Returns:
         str: Save path of model checkpoint 
     """
-    seed.seed_everything(opts.seed)  
+    seed.seed_everything(opts.seed)
     
     set_dist.init_distributed_training(rank, opts)
     local_gpu_id = opts.gpu
     
-    ### checkpoint set ### 
+    ### checkpoint & WandB set ### 
     run_time = datetime.now()
     run_time = run_time.strftime("%b%d_%H%M%S")
     file_name = run_time + '.pth'
     save_path = os.path.join(CHECKPOINT_DIR, file_name)
+    
+    if opts.rank == 0:
+        wandb.init(project=opts.project_name)
+        wandb.run.name = run_time 
 
     ### dataset & dataloader ### 
     train_set = dataset.make_dataset(
@@ -75,7 +81,7 @@ def main(rank, opts) -> str:
     )
     
     if opts.dist:
-        train_sampler = DistributedSampler(dataset=train_set, shuffle=True)
+        train_sampler = DistributedSampler(dataset=train_set, shuffle=True, seed=opts.seed)
         batch_sampler_train = BatchSampler(train_sampler, opts.batch_size, drop_last=True)
         train_loader = DataLoader(train_set, batch_sampler=batch_sampler_train, num_workers=opts.num_workers)
     
@@ -104,7 +110,7 @@ def main(rank, opts) -> str:
     if opts.dist:
         sam = nn.SyncBatchNorm.convert_sync_batchnorm(sam)
     
-    ### Trainable config ###
+    # set trainable parameters
     for _, p in sam.image_encoder.named_parameters():
         p.requires_grad = False
         
@@ -113,6 +119,10 @@ def main(rank, opts) -> str:
 
     # fine-tuning mask decoder         
     for _, p in sam.mask_decoder.named_parameters():
+        p.requires_grad = True
+        
+    # fine-tuning conv adapter          
+    for _, p in sam.conv_adapter.named_parameters():
         p.requires_grad = True
     
     # print model info 
@@ -123,7 +133,7 @@ def main(rank, opts) -> str:
 
     sam = DistributedDataParallel(module=sam, device_ids=[local_gpu_id])    
 
-    ### train config ###  
+    ### training config ###  
     bceloss = nn.BCELoss().to(local_gpu_id)
     iouloss = iou_loss_torch.IoULoss().to(local_gpu_id)
 
@@ -131,7 +141,11 @@ def main(rank, opts) -> str:
     lr = opts.lr
     # EarlyStopping : Determined based on the validation loss. Lower is better(mode='min').
     es = trainer.EarlyStopping(patience=EPOCHS//2, delta=0, mode='min', verbose=True)
-    optimizer = torch.optim.AdamW(sam.parameters(), lr=lr)
+    es_signal = torch.tensor([0]).to(local_gpu_id)
+    optimizer = torch.optim.AdamW(
+        sam.parameters(), 
+        lr=lr
+    )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, 
         T_max=len(train_loader), 
@@ -139,9 +153,28 @@ def main(rank, opts) -> str:
         last_epoch=-1
     )
 
+    if opts.rank == 0:
+        wandb.watch(
+            models=sam.module,
+            criterion=(bceloss, iouloss),
+            log='all',
+            log_freq=10
+        )
+    
+        wandb.run.summary['optimizer'] = type(optimizer).__name__
+        wandb.run.summary['scheduler'] = type(scheduler).__name__
+        wandb.run.summary['initial lr'] = lr
+        wandb.run.summary['total epoch'] = EPOCHS
+    
     max_loss = np.inf 
     
     for epoch in range(EPOCHS):
+        
+        # EarlyStopping
+        dist.barrier()
+        dist.all_reduce(es_signal, op=dist.ReduceOp.SUM) 
+        if es_signal.item() == 1:
+            break
         
         if opts.dist:
             train_sampler.set_epoch(epoch)
@@ -157,6 +190,8 @@ def main(rank, opts) -> str:
         )
         
         if opts.dist:
+            dist.barrier()
+            
             dist.all_reduce(train_bce_loss, op=dist.ReduceOp.SUM)            
             train_bce_loss = train_bce_loss.item() / dist.get_world_size()
             
@@ -185,11 +220,29 @@ def main(rank, opts) -> str:
             
             val_loss = val_bce_loss + val_iou_loss
             
+            wandb.log(
+                {
+                    'Train BCE Loss': train_bce_loss,
+                    'Train IoU Loss': train_iou_loss,
+                    'Train Dice Metric': train_dice,
+                    'Train IoU Metric': train_iou
+                }, step=epoch+1
+            )
+        
+            wandb.log(
+                {
+                    'Validation BCE Loss': val_bce_loss,
+                    'Validation IoU Loss': val_iou_loss,
+                    'Validation Dice Metric': val_dice,
+                    'Validation IoU Metric': val_iou
+                }, step=epoch+1
+            )
+            
             # Check EarlyStopping
             es(val_loss)
             if es.early_stop:
-                print(f'Model checkpoint saved at: {save_path} \n')
-                break
+                es_signal = torch.tensor([1]).to(local_gpu_id)
+                continue
         
             ### Save best model ###
             if val_loss < max_loss:
@@ -202,10 +255,14 @@ def main(rank, opts) -> str:
             print(f'val_bce_loss: {val_bce_loss:.5f}, val_iou_loss: {val_iou_loss:.5f}, val_dice: {val_dice:.5f}, val_iou: {val_iou:.5f} \n')
     
     print(f'Model checkpoint saved at: {save_path} \n') 
+    
+    return
 
 if __name__ == '__main__': 
 
-    parser = argparse.ArgumentParser('Fine-tuning SAM', parents=[get_args_parser()])
+    wandb.login()
+    
+    parser = argparse.ArgumentParser('CAD for SAM', parents=[get_args_parser()])
     opts = parser.parse_args() 
     
     if opts.dist:
