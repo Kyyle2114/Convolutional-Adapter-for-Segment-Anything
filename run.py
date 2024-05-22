@@ -106,10 +106,6 @@ def main(rank, opts) -> str:
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
     sam.cuda(local_gpu_id)
     
-    # if multi-gpu training, use SyncBatchNorm
-    if opts.dist:
-        sam = nn.SyncBatchNorm.convert_sync_batchnorm(sam)
-    
     # set trainable parameters
     for _, p in sam.image_encoder.named_parameters():
         p.requires_grad = False
@@ -130,8 +126,15 @@ def main(rank, opts) -> str:
     print('=== MODEL INFO ===')
     summary(sam)
     print()
+    
+    if not opts.dist:
+        model = sam 
 
-    sam = DistributedDataParallel(module=sam, device_ids=[local_gpu_id])    
+    if opts.dist:
+        # if multi-gpu training, use SyncBatchNorm
+        sam = nn.SyncBatchNorm.convert_sync_batchnorm(sam)
+        sam = DistributedDataParallel(module=sam, device_ids=[local_gpu_id])    
+        model = sam.module
 
     ### training config ###  
     bceloss = nn.BCELoss().to(local_gpu_id)
@@ -143,7 +146,7 @@ def main(rank, opts) -> str:
     es = trainer.EarlyStopping(patience=EPOCHS//2, delta=0, mode='min', verbose=True)
     es_signal = torch.tensor([0]).to(local_gpu_id)
     optimizer = torch.optim.AdamW(
-        sam.parameters(), 
+        model.parameters(), 
         lr=lr
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
@@ -155,7 +158,7 @@ def main(rank, opts) -> str:
 
     if opts.rank == 0:
         wandb.watch(
-            models=sam.module,
+            models=model,
             criterion=(bceloss, iouloss),
             log='all',
             log_freq=10
@@ -171,8 +174,10 @@ def main(rank, opts) -> str:
     for epoch in range(EPOCHS):
         
         # EarlyStopping
-        dist.barrier()
-        dist.all_reduce(es_signal, op=dist.ReduceOp.SUM) 
+        if opts.dist:
+            dist.barrier()
+            dist.all_reduce(es_signal, op=dist.ReduceOp.SUM) 
+            
         if es_signal.item() == 1:
             break
         
@@ -181,7 +186,7 @@ def main(rank, opts) -> str:
         
         ### model train / validation ###
         train_bce_loss, train_iou_loss, train_dice, train_iou = trainer.model_train(
-            model=sam.module,
+            model=model,
             data_loader=train_loader,
             criterion=[bceloss, iouloss],
             optimizer=optimizer,
@@ -212,7 +217,7 @@ def main(rank, opts) -> str:
         
         if opts.rank == 0:
             val_bce_loss, val_iou_loss, val_dice, val_iou = trainer.model_evaluate(
-                model=sam.module,
+                model=model,
                 data_loader=val_loader,
                 criterion=[bceloss, iouloss],
                 device=f"cuda:{local_gpu_id}"
@@ -261,25 +266,27 @@ def main(rank, opts) -> str:
 if __name__ == '__main__': 
 
     wandb.login()
-    
-    parser = argparse.ArgumentParser('CAD for SAM', parents=[get_args_parser()])
+        
+    parser = argparse.ArgumentParser('Conv-Adapter-SAM', parents=[get_args_parser()])
     opts = parser.parse_args() 
     
     if opts.dist:
         opts.ngpus_per_node = torch.cuda.device_count()
         opts.gpu_ids = list(range(opts.ngpus_per_node))
+        opts.num_workers = opts.ngpus_per_node * 4
+        
+        torch.multiprocessing.spawn(
+            main,
+            args=(opts,),
+            nprocs=opts.ngpus_per_node,
+            join=True
+        )
         
     if not opts.dist:
         opts.ngpus_per_node = 1
         opts.gpu_ids = [0]
+        opts.num_workers = 0
     
-    opts.num_workers = opts.ngpus_per_node * 4
-
-    torch.multiprocessing.spawn(
-        main,
-        args=(opts,),
-        nprocs=opts.ngpus_per_node,
-        join=True
-    )
+        main(rank=0, opts=opts)
     
     print('=== DONE === \n')    
