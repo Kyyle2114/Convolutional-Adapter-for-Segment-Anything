@@ -35,7 +35,7 @@ class CustomDataset(Dataset):
         return image, mask
     
     def __len__(self):
-        return len(self.data_images)
+        return len(self.mask_images)
     
 def make_dataset(image_dir: str,
                  mask_dir: str,

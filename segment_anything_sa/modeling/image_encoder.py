@@ -78,7 +78,7 @@ class ImageEncoderViT(nn.Module):
         self.patch_embed_tune = nn.Linear(embed_dim, self.tune_out)
         
         # Input: patch size * patch size * channels 
-        self.HFC_tune = nn.Linear(patch_size*patch_size*in_chans, self.tune_out) 
+        self.HFC_tune = nn.Linear(patch_size * patch_size * in_chans, self.tune_out) 
     
         # shared up projection adapter 
         self.task_adapter_hidden_dim = self.adapter_config['task_specific_adapter_hidden_dim']
@@ -133,6 +133,8 @@ class ImageEncoderViT(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Tensor (N, 4096, 768)
+        N, _, _, _ = x.shape 
+
         hfc = self._extract_freq_components(x)
         
         x = self.patch_embed(x)
@@ -140,7 +142,7 @@ class ImageEncoderViT(nn.Module):
             x = x + self.pos_embed
         
         # Tensor (N, 64, 64, 768) -> (N, 4096, 768)
-        patch_embed_tune = x.view(-1, self.embed_dim)  
+        patch_embed_tune = x.view(N, -1, self.embed_dim)  
         
         # Tensor (N, 4096, 768) -> (N, 4096, self.tune_out)
         patch_embed_tune = self.patch_embed_tune(patch_embed_tune)
@@ -160,7 +162,8 @@ class ImageEncoderViT(nn.Module):
 
         return x
     
-    def _extract_freq_components(x: torch.Tensor, 
+    def _extract_freq_components(self,
+                                 x: torch.Tensor, 
                                  tau_rate: float = 0.25,
                                  patch_size: int = 16) -> torch.Tensor:
         """
@@ -175,7 +178,7 @@ class ImageEncoderViT(nn.Module):
             torch.Tensor: high frequency components.
         """
         mask = torch.zeros(x.shape).to(x.device)
-        W, H = x.shape[-2:]
+        N, _, W, H = x.shape
         
         # W, H = 1024, tau_rate = 0.25 -> masking_area = 256
         masking_area = int((W * H * tau_rate) ** .5 // 2)
@@ -192,7 +195,7 @@ class ImageEncoderViT(nn.Module):
         hfc = torch.abs(hfc)
         
         hfc = hfc.unfold(2, patch_size, patch_size).unfold(3, patch_size, patch_size)
-        hfc = hfc.permute(0, 2, 3, 1, 4, 5).reshape(-1, patch_size * patch_size * 3)
+        hfc = hfc.permute(0, 2, 3, 1, 4, 5).reshape(N, -1, patch_size * patch_size * 3)
 
         return hfc
 
