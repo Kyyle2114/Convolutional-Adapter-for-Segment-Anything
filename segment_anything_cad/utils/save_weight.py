@@ -26,13 +26,15 @@ def save_partial_weight(model: Type[nn.Module],
     return trainable_param
 
 def load_partial_weight(model: Type[nn.Module], 
-                        load_path: str = 'Best_Decoder.pth') -> Type[nn.Module]:
+                        load_path: str = 'Best_Decoder.pth',
+                        dist: bool = True) -> Type[nn.Module]:
     """
     Loads the weights of trainable parameters.
     
     Args:
         model (Type[nn.Module]): SAM
         load_path (str, optional): path to load. Defaults to 'Best_Decoder.pth'.
+        dist (bool, optional): If you trained the model on multi-GPU, pass True. Defaults to True.
 
     Returns:
         Type[nn.Module]: model with updated parameters
@@ -42,8 +44,9 @@ def load_partial_weight(model: Type[nn.Module],
     model_state_dict = model.state_dict()
     
     for k, v in state_dict_trainable.items():
-        # module.mask_decoder.* -> mask_decoder.* 
-        k = k[7:]
+        if dist:
+            # module.mask_decoder.* -> mask_decoder.* 
+            k = k[7:]
         model_state_dict[k] = v
 
     model.load_state_dict(model_state_dict)

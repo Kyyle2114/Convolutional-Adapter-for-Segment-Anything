@@ -1,8 +1,10 @@
 import warnings
 warnings.filterwarnings('ignore')
 
-from segment_anything import sam_model_registry
-from segment_anything.utils import *
+from segment_anything_sa import sam_model_registry
+from segment_anything_sa.utils import *
+
+import albumentations as A
 
 import torch
 import torch.nn as nn 
@@ -15,11 +17,16 @@ from torch.nn.parallel import DistributedDataParallel
 import os
 import argparse
 import wandb
+import pickle 
 from datetime import datetime
 from torchinfo import summary
 
 CHECKPOINT_DIR = 'checkpoints'
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+
+# vanila sam param list
+with open('sam_params.pkl', 'rb') as f:
+    SAM_PARAMS = pickle.load(f)
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -41,7 +48,7 @@ def get_args_parser():
     parser.add_argument('--checkpoint', type=str, default='sam_vit_t.pt', help='SAM model checkpoint')
     parser.add_argument('--epoch', type=int, default=10, help='total epoch')
     parser.add_argument('--lr', type=float, default=2e-4, help='initial learning rate')
-    parser.add_argument('--project_name', type=str, default='CAD-for-SAM', help='WandB project name')
+    parser.add_argument('--project_name', type=str, default='Fine-tuning-SAM', help='WandB project name')
     parser.add_argument('--local_rank', type=int)
     
     return parser
@@ -70,9 +77,20 @@ def main(rank, opts) -> str:
         wandb.run.name = run_time 
 
     ### dataset & dataloader ### 
+    # data augmentation for train image & mask 
+    transform = A.Compose([
+        A.OneOf([
+            A.HorizontalFlip(p=1),
+            A.VerticalFlip(p=1),
+            A.RandomRotate90(p=1),
+            A.ShiftScaleRotate(p=1)
+        ], p=0.5)
+    ])
+    
     train_set = dataset.make_dataset(
         image_dir='datasets/train/image',
-        mask_dir='datasets/train/mask'
+        mask_dir='datasets/train/mask',
+        transform=transform
     )
     
     val_set = dataset.make_dataset(
@@ -102,23 +120,29 @@ def main(rank, opts) -> str:
     ### SAM config ### 
     sam_checkpoint = opts.checkpoint
     model_type = opts.model_type
+    
+    # adapter config 
+    adapter_config = {
+        'task_specific_tune_out': 320,
+        'task_specific_adapter_hidden_dim': 32,
+        'task_specific_adapter_act_layer': nn.GELU,
+        'task_specific_adapter_skip_connection': False, 
+    }
 
-    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+    sam = sam_model_registry[model_type](adapter_config=adapter_config, checkpoint=sam_checkpoint)
     sam.cuda(local_gpu_id)
     
     # set trainable parameters
-    for _, p in sam.image_encoder.named_parameters():
-        p.requires_grad = False
-        
-    for _, p in sam.prompt_encoder.named_parameters():
-        p.requires_grad = False
+    for n, p in sam.named_parameters():
+        # non-trainable params (image encoder & prompt encoder)
+        if n in SAM_PARAMS: 
+            p.requires_grad = False
+        # trainable params (sam adapter, mask decoder)
+        else:
+            p.requires_grad = True
 
     # fine-tuning mask decoder         
     for _, p in sam.mask_decoder.named_parameters():
-        p.requires_grad = True
-        
-    # fine-tuning conv adapter          
-    for _, p in sam.conv_adapter.named_parameters():
         p.requires_grad = True
     
     # print model info 
@@ -126,16 +150,16 @@ def main(rank, opts) -> str:
     print('=== MODEL INFO ===')
     summary(sam)
     print()
-    
-    if not opts.dist:
-        model = sam 
 
+    if not opts.dist:
+        model = sam
+    
     if opts.dist:
         # if multi-gpu training, use SyncBatchNorm
-        sam = nn.SyncBatchNorm.convert_sync_batchnorm(sam)
         sam = DistributedDataParallel(module=sam, device_ids=[local_gpu_id])    
         model = sam.module
 
+        
     ### training config ###  
     bceloss = nn.BCELoss().to(local_gpu_id)
     iouloss = iou_loss_torch.IoULoss().to(local_gpu_id)
@@ -175,7 +199,7 @@ def main(rank, opts) -> str:
         
         # EarlyStopping
         if opts.dist:
-            dist.barrier()
+            dist.barrier()  
             dist.all_reduce(es_signal, op=dist.ReduceOp.SUM) 
             
         if es_signal.item() == 1:
@@ -266,8 +290,8 @@ def main(rank, opts) -> str:
 if __name__ == '__main__': 
 
     wandb.login()
-        
-    parser = argparse.ArgumentParser('Conv-Adapter-SAM', parents=[get_args_parser()])
+    
+    parser = argparse.ArgumentParser('SAM-Adapter', parents=[get_args_parser()])
     opts = parser.parse_args() 
     
     if opts.dist:

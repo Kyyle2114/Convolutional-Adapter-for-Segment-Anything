@@ -1,6 +1,6 @@
 import os
 import numpy as np 
-from PIL import Image
+import cv2
 from typing import Type
 
 import torch
@@ -19,29 +19,35 @@ class CustomDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.image_dir, self.data_images[idx])
-        mask_path = os.path.join(self.mask_dir, self.data_images[idx])  
+        mask_path = os.path.join(self.mask_dir, self.mask_images[idx])  
 
-        image = Image.open(img_path)
-        mask = Image.open(mask_path)
+        image = cv2.imread(img_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        mask = cv2.imread(mask_path)
+        mask = cv2.cvtColor(mask, cv2.COLOR_BGR2RGB)
 
         if self.transform:
-            image = self.transform(image)
-            mask = self.transform(mask)
-
-        return np.array(image), np.array(mask)
+            augmentations = self.transform(image=image, mask=mask)
+            image = augmentations['image']
+            mask = augmentations['mask']
+            
+        return image, mask
     
     def __len__(self):
         return len(self.data_images)
     
 def make_dataset(image_dir: str,
-                 mask_dir: str) -> Type[torch.utils.data.Dataset]:
+                 mask_dir: str,
+                 transform = None) -> Type[torch.utils.data.Dataset]:
     """
     Make pytorch Dataset for given task.
-    Read the image using the PIL library and return it as an np.array.
+    Read the image using the opencv library and return it as an np.array.
 
     Args:
         image_dir (str): path of image folder. The image file and mask file must have the same name.
         mask_dir (str): path of mask folder. The image file and mask file must have the same name.
+        transform (albumentations transform): The albumentations transforms to be applied to images and masks. Defaults to None.
 
     Returns:
         torch.Dataset: pytorch Dataset
@@ -49,6 +55,6 @@ def make_dataset(image_dir: str,
         
     dataset = CustomDataset(image_dir=image_dir,
                             mask_dir=mask_dir,
-                            transform=None)
+                            transform=transform)
         
     return dataset

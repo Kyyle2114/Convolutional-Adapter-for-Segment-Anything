@@ -7,7 +7,6 @@ from typing import Tuple
 from .transforms import ResizeLongestSide
 from .make_prompt import *
 from .metrics import *
-from .fft import *
 
 def model_train(model,
                 data_loader,
@@ -49,18 +48,13 @@ def model_train(model,
         for X, y in tqdm(data_loader):
             optimizer.zero_grad()
             
-            X_torch, y_torch = X.float().permute(0, 3, 1, 2).contiguous().to(device), y.float().to(device)
+            X_torch, y_torch = X.float().permute(0, 3, 1, 2).contiguous().to(device), y[..., 0].float().to(device)
             
             batched_input = []
             
             for image, mask in zip(X_torch, y_torch):
                 # prepare image
-                original_image = image
-                original_size = original_image.shape[1:3]
-                
-                # high freq
-                fft = extract_freq_components(original_image.unsqueeze(0))
-                fft = fft.squeeze()
+                original_size = image.shape[1:3]
                 
                 image = transform.apply_image(image)
                 image = torch.as_tensor(image, device=device)
@@ -78,8 +72,6 @@ def model_train(model,
             
                 batched_input.append(
                     {
-                        'original_image': original_image,
-                        'fft': fft,
                         'image': image,
                         'boxes': box_torch,
                         'original_size': original_size
@@ -135,7 +127,7 @@ def model_train(model,
         for X, y in data_loader:
             optimizer.zero_grad()
             
-            X_torch, y_torch = X.float().permute(0, 3, 1, 2).contiguous().to(device), y.float().to(device)
+            X_torch, y_torch = X.float().permute(0, 3, 1, 2).contiguous().to(device), y[..., 0].float().to(device)
             
             batched_input = []
             
@@ -254,7 +246,7 @@ def model_evaluate(model,
         transform = ResizeLongestSide(target_length=model.image_encoder.img_size)
         
         for X, y in data_loader: 
-            X_torch, y_torch = X.float().permute(0, 3, 1, 2).contiguous().to(device), y.float().to(device)
+            X_torch, y_torch = X.float().permute(0, 3, 1, 2).contiguous().to(device), y[..., 0].float().to(device)
             
             batched_input = []
             
