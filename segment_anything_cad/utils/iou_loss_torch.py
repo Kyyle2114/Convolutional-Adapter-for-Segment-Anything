@@ -13,9 +13,13 @@ class IoULoss(torch.nn.Module):
         super(IoULoss, self).__init__()
 
     def _iou(self, pred, target):
+        smooth = 1e-3
+        
         inter = (pred * target).sum(dim=(1, 2))
         union = (pred + target).sum(dim=(1, 2)) - inter
-        iou = 1 - (inter / union)
+        iou = (inter + smooth) / (union + smooth)
+        
+        iou = 1 - iou
 
         return iou.mean()
 

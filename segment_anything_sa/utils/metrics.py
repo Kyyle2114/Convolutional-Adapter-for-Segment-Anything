@@ -12,7 +12,7 @@ def Dice(pred: torch.Tensor,
     Returns:
         torch.Tensor: average Dice score
     """
-    smooth = 1e-7
+    smooth = 1e-3
     intersection = torch.sum(pred * target, dim=(1, 2))
     dice = (2.0 * intersection + smooth) / (torch.sum(pred, dim=(1, 2)) + torch.sum(target, dim=(1, 2)) + smooth)
     
@@ -30,9 +30,10 @@ def IoU(pred: torch.Tensor,
     Returns:
         torch.Tensor: average IoU score
     """
+    smooth = 1e-3
     inter = torch.sum(pred * target, dim=(1, 2))
     union = torch.sum(pred + target, dim=(1, 2)) - inter 
-    iou = inter / union
+    iou = (inter + smooth) / (union + smooth)
     
     return iou.mean()
 
