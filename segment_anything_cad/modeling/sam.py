@@ -4,6 +4,15 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+"""
+ADD
+conv adapter & high freq component
+
+FIX 
+forward -> torch.no_grad() with image encoder & prompt encoder 
+output 
+"""
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -52,10 +61,6 @@ class Sam(nn.Module):
     def device(self) -> Any:
         return self.pixel_mean.device
 
-    # Fix list 
-    # - torch.no_grad() with image encoder & prompt encoder 
-    # - conv adapter & high freq component
-    # - output 
     def forward(
         self,
         batched_input: List[Dict[str, Any]],
@@ -103,12 +108,14 @@ class Sam(nn.Module):
         ffts = torch.stack([x["fft"] for x in batched_input], dim=0)
         input_images = torch.stack([self.preprocess(x["image"]) for x in batched_input], dim=0)
         
-        features = self.conv_adapter(original_images) + self.conv_adapter(ffts)
+        # concat with C channel 
+        original_images = torch.cat((original_images, ffts), dim=1)
+        features = self.conv_adapter(original_images) 
         
         with torch.no_grad():
             image_embeddings = self.image_encoder(input_images)
             
-        features = features + image_embeddings
+        features = 0.1 * features + image_embeddings
 
         outputs = []
         

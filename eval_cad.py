@@ -9,12 +9,17 @@ from torch.utils.data import DataLoader
 
 import argparse
 
+# if use single-gpu
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '0' 
+
 def get_args_parser():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--batch_size', type=int, default=1, help='batch size allocated to GPU')
     parser.add_argument('--seed', type=int, default=21, help='random seed')
-    parser.add_argument('--model_type', type=str, default='vit_t', help='SAM model type')
-    parser.add_argument('--checkpoint', type=str, default='sam_vit_t.pt', help='SAM model checkpoint')
+    parser.add_argument('--model_type', type=str, default='vit_b', help='SAM model type')
+    parser.add_argument('--checkpoint', type=str, default='sam_vit_b.pt', help='SAM model checkpoint')
+    parser.add_argument('--dataset', type=int, default='1', help='test dataset option')
     
     return parser
 
@@ -29,8 +34,8 @@ def main(opts):
     
     ### dataset & dataloader ### 
     test_set = dataset.make_dataset(
-        image_dir='datasets/test/image',
-        mask_dir='datasets/test/mask'
+        image_dir=f'datasets/test/test{opts.dataset}/image',
+        mask_dir=f'datasets/test/test{opts.dataset}/mask'
     )
     
     test_loader = DataLoader(
@@ -46,6 +51,13 @@ def main(opts):
 
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
     sam.to(device)
+    sam.eval()
+    
+    sam = save_weight.load_partial_weight(
+        model=sam,
+        load_path='/checkpoints/sam_cad.pth',
+        dist=False
+    )
     
     # freezing parameters
     for _, p in sam.named_parameters():

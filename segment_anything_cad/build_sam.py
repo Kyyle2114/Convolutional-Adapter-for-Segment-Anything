@@ -4,6 +4,14 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+"""
+ADD 
+TinyViT & ConvAdapter 
+
+FIX 
+load_state_dict -> strict=False
+"""
+
 import torch
 
 from functools import partial
@@ -19,7 +27,6 @@ def build_sam_vit_h(checkpoint=None):
         encoder_global_attn_indexes=[7, 15, 23, 31],
         checkpoint=checkpoint,
     )
-
 
 build_sam = build_sam_vit_h
 

@@ -4,6 +4,14 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+"""
+ADD 
+SAM Adapter config  
+
+FIX 
+load_state_dict -> strict=False
+"""
+
 import torch
 import torch.nn as nn
 
@@ -11,9 +19,10 @@ from functools import partial
 
 from .modeling import ImageEncoderViT, MaskDecoder, PromptEncoder, Sam, TwoWayTransformer
 
+# base adapter config 
 base_adapter_config = {
-    'task_specific_tune_out': 320,
-    'task_specific_adapter_hidden_dim': 32,
+    'task_specific_tune_out': 192, # = 768 / 4, r = 4 in EVP 
+    'task_specific_adapter_hidden_dim': 32, # same as SAM-Adapter 
     'task_specific_adapter_act_layer': nn.GELU,
     'task_specific_adapter_skip_connection': False, 
 }

@@ -1,5 +1,5 @@
-Memory Efficient Convolutional Adapter for Segment Anything
+# CAD : Memory Efficient Convolutional Adapter for Segment Anything
 
-Extract high frequency components using fft
+![alt text](assets/image.png)
 
-AIaaS Laboratory, School of Information Convergence, Kwangwoon University 
+**AIaaS Laboratory, School of Information Convergence, Kwangwoon University**

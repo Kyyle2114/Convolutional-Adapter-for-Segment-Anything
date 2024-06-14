@@ -3,14 +3,14 @@ import torch.nn as nn
 
 class ConvAdapter(nn.Module):
     def __init__(self,
-                 in_chans: int = 3,
+                 in_chans: int = 6,
                  out_chans: int = 256):
         """
         Convolutional Adapter for SAM
         The output of the ConvAdapter is added to the image embedding from ViT(image encoder).
 
         Args:
-            in_chans (int, optional): input channels. Defaults to 3.
+            in_chans (int, optional): input channels. Defaults to 6.
             out_chans (int, optional): output channels. Defaults to 256.
         """
         
@@ -51,7 +51,7 @@ class ConvAdapter(nn.Module):
         
         x = p1 + p2 + p3
         
-        return x
+        return torch.tanh(x)
 
 class ConvBlock(nn.Module):
     def __init__(self,

@@ -171,7 +171,7 @@ def model_train(model,
                         'original_size': original_size
                     }
                 )
-            
+                            
             batched_output = model(batched_input, multimask_output=False)
             
             loss = 0.0

@@ -20,8 +20,14 @@ import wandb
 from datetime import datetime
 from torchinfo import summary
 
+# if use single-gpu
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '0' 
+
 CHECKPOINT_DIR = 'checkpoints'
+CHECKPOINT_ALL_DIR = 'checkpoints/cad'
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+os.makedirs(CHECKPOINT_ALL_DIR, exist_ok=True)
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -39,8 +45,8 @@ def get_args_parser():
     parser.add_argument('--port', type=int, default=1234, help='port number for distributed learning')
     parser.add_argument('--dist', type=str2bool, default=True, help='if True, use multi-gpu(distributed) training')
     parser.add_argument('--seed', type=int, default=21, help='random seed')
-    parser.add_argument('--model_type', type=str, default='vit_t', help='SAM model type')
-    parser.add_argument('--checkpoint', type=str, default='sam_vit_t.pt', help='SAM model checkpoint')
+    parser.add_argument('--model_type', type=str, default='vit_b', help='SAM model type')
+    parser.add_argument('--checkpoint', type=str, default='sam_vit_b.pt', help='SAM model checkpoint')
     parser.add_argument('--epoch', type=int, default=10, help='total epoch')
     parser.add_argument('--lr', type=float, default=2e-4, help='initial learning rate')
     parser.add_argument('--project_name', type=str, default='Fine-tuning-SAM', help='WandB project name')
@@ -89,8 +95,8 @@ def main(rank, opts) -> str:
     )
     
     val_set = dataset.make_dataset(
-        image_dir='datasets/test/image',
-        mask_dir='datasets/test/mask'
+        image_dir='datasets/valid/image',
+        mask_dir='datasets/valid/mask'
     )
     
     if opts.dist:
@@ -272,6 +278,10 @@ def main(rank, opts) -> str:
             ### print current loss / metric ###
             print(f'epoch {epoch+1:02d}, bce_loss: {train_bce_loss:.5f}, iou_loss: {train_iou_loss:.5f}, dice: {train_dice:.5f}, iou: {train_iou:.5f},', end=' ')
             print(f'val_bce_loss: {val_bce_loss:.5f}, val_iou_loss: {val_iou_loss:.5f}, val_dice: {val_dice:.5f}, val_iou: {val_iou:.5f} \n')
+            
+            # save model
+            _ = save_weight.save_partial_weight(model=sam, save_path=f'{CHECKPOINT_ALL_DIR}/{epoch+1}.pth')
+            
     
     print(f'Model checkpoint saved at: {save_path} \n') 
     
@@ -281,7 +291,7 @@ if __name__ == '__main__':
 
     wandb.login()
     
-    parser = argparse.ArgumentParser('SAM-Conv-Adapter', parents=[get_args_parser()])
+    parser = argparse.ArgumentParser('CAD-Comparison', parents=[get_args_parser()])
     opts = parser.parse_args() 
     
     if opts.dist:
