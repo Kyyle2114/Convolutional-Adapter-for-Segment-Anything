@@ -137,7 +137,7 @@ class ImageEncoderViT(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Tensor (N, 4096, 768)
+        # Tensor (N, 64, 64, 768)
         N, _, _, _ = x.shape 
 
         hfc = self._extract_freq_components(x)
