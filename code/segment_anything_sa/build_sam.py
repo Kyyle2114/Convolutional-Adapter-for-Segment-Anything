@@ -22,7 +22,7 @@ from .modeling import ImageEncoderViT, MaskDecoder, PromptEncoder, Sam, TwoWayTr
 # base adapter config 
 base_adapter_config = {
     'task_specific_tune_out': 192, # = 768 / 4, r = 4 in EVP 
-    'task_specific_adapter_hidden_dim': 32, # same as SAM-Adapter 
+    'task_specific_adapter_hidden_dim': 32, 
     'task_specific_adapter_act_layer': nn.GELU,
     'task_specific_adapter_skip_connection': False, 
 }
