@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 
 import numpy as np 
 from tqdm import tqdm 
@@ -93,6 +94,7 @@ def model_train(model,
             iou_loss = 0.0
             dice = 0.0
             iou = 0.0
+            cad_loss = 0.0
             
             for i, gt_mask in enumerate(y_torch):
                 
@@ -112,6 +114,14 @@ def model_train(model,
                 iou_loss = iou_loss + iou_loss_
                 dice = dice + dice_
                 iou = iou + iou_
+                
+                ### aux loss ###
+                gt_mask_down = F.interpolate(gt_mask, size=(64, 64), mode='bilinear', align_corners=False)
+                aux_feature = batched_output[i]['aux_feature']
+                
+                cad_loss_ = bce_loss(aux_feature, gt_mask_down.unsqueeze(0)) + iou_loss(aux_feature, gt_mask_down.unsqueeze(0))
+                cad_loss = cad_loss + cad_loss_
+
             
             # average loss & metrcis (mini-batch)
             loss = loss / y_torch.shape[0]
@@ -119,7 +129,10 @@ def model_train(model,
             iou_loss = iou_loss / y_torch.shape[0]
             dice = dice / y_torch.shape[0]
             iou = iou / y_torch.shape[0]
-                    
+            cad_loss = cad_loss / y_torch.shape[0]
+            
+            loss = loss + 0.3 * cad_loss
+            
             loss.backward()
             optimizer.step()
                 
@@ -179,6 +192,7 @@ def model_train(model,
             iou_loss = 0.0
             dice = 0.0
             iou = 0.0
+            cad_loss = 0.0
             
             for i, gt_mask in enumerate(y_torch):
                 
@@ -198,6 +212,14 @@ def model_train(model,
                 iou_loss = iou_loss + iou_loss_
                 dice = dice + dice_
                 iou = iou + iou_
+                
+                ### aux loss ###
+                gt_mask_down = F.interpolate(gt_mask, size=(64, 64), mode='bilinear', align_corners=False)
+                aux_feature = batched_output[i]['aux_feature']
+                
+                cad_loss_ = bce_loss(aux_feature, gt_mask_down.unsqueeze(0)) + iou_loss(aux_feature, gt_mask_down.unsqueeze(0))
+                cad_loss = cad_loss + cad_loss_
+
             
             # average loss & metrcis (mini-batch)
             loss = loss / y_torch.shape[0]
@@ -205,7 +227,10 @@ def model_train(model,
             iou_loss = iou_loss / y_torch.shape[0]
             dice = dice / y_torch.shape[0]
             iou = iou / y_torch.shape[0]
-                    
+            cad_loss = cad_loss / y_torch.shape[0]
+            
+            loss = loss + 0.3 * cad_loss
+            
             loss.backward()
             optimizer.step()
                 

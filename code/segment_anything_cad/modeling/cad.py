@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+from typing import Tuple
+
 class ConvAdapter(nn.Module):
     def __init__(self,
                  in_chans: int = 6,
@@ -30,7 +32,7 @@ class ConvAdapter(nn.Module):
         
         self.avg_pool = nn.AdaptiveAvgPool2d((64, 64))
             
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         # N: batch size  
         # x: (N, C, H, W) size tensor
         x = x / 255.
@@ -51,7 +53,7 @@ class ConvAdapter(nn.Module):
         
         x = p1 + p2 + p3
         
-        return torch.tanh(x)
+        return torch.tanh(x), torch.sigmoid(torch.mean(x, dim=1))
 
 class ConvBlock(nn.Module):
     def __init__(self,
