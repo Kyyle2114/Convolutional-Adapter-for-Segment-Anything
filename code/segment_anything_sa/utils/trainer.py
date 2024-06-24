@@ -57,7 +57,7 @@ def model_train(model,
                 original_size = image.shape[1:3]
                 
                 image = transform.apply_image(image)
-                image = torch.as_tensor(image, device=device)
+                image = torch.as_tensor(image, dtype=torch.float, device=device)
                 image = image.permute(2, 0, 1).contiguous()
                 
                 box = make_box_prompt(
@@ -136,7 +136,7 @@ def model_train(model,
                 original_size = image.shape[1:3]
                 
                 image = transform.apply_image(image)
-                image = torch.as_tensor(image, device=device)
+                image = torch.as_tensor(image, dtype=torch.float, device=device)
                 image = image.permute(2, 0, 1).contiguous()
                 
                 box = make_box_prompt(
@@ -255,7 +255,7 @@ def model_evaluate(model,
                 original_size = image.shape[1:3]
                 
                 image = transform.apply_image(image)
-                image = torch.as_tensor(image, device=device)
+                image = torch.as_tensor(image, dtype=torch.float, device=device)
                 image = image.permute(2, 0, 1).contiguous()
                 
                 box = make_box_prompt(

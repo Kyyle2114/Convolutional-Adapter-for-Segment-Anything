@@ -64,7 +64,7 @@ def model_train(model,
                 fft = fft.squeeze()
                 
                 image = transform.apply_image(image)
-                image = torch.as_tensor(image, device=device)
+                image = torch.as_tensor(image, dtype=torch.float, device=device)
                 image = image.permute(2, 0, 1).contiguous()
                 
                 box = make_box_prompt(
@@ -122,7 +122,6 @@ def model_train(model,
                 cad_loss_ = bce_loss(aux_feature, gt_mask_down.unsqueeze(0)) + iou_loss(aux_feature, gt_mask_down.unsqueeze(0))
                 cad_loss = cad_loss + cad_loss_
 
-            
             # average loss & metrcis (mini-batch)
             loss = loss / y_torch.shape[0]
             bce_loss = bce_loss / y_torch.shape[0]
@@ -162,7 +161,7 @@ def model_train(model,
                 fft = fft.squeeze()
                 
                 image = transform.apply_image(image)
-                image = torch.as_tensor(image, device=device)
+                image = torch.as_tensor(image, dtype=torch.float, device=device)
                 image = image.permute(2, 0, 1).contiguous()
                 
                 box = make_box_prompt(
@@ -220,7 +219,6 @@ def model_train(model,
                 cad_loss_ = bce_loss(aux_feature, gt_mask_down.unsqueeze(0)) + iou_loss(aux_feature, gt_mask_down.unsqueeze(0))
                 cad_loss = cad_loss + cad_loss_
 
-            
             # average loss & metrcis (mini-batch)
             loss = loss / y_torch.shape[0]
             bce_loss = bce_loss / y_torch.shape[0]
@@ -300,7 +298,7 @@ def model_evaluate(model,
                 fft = fft.squeeze()
                 
                 image = transform.apply_image(image)
-                image = torch.as_tensor(image, device=device)
+                image = torch.as_tensor(image, dtype=torch.float, device=device)
                 image = image.permute(2, 0, 1).contiguous()
                 
                 box = make_box_prompt(
