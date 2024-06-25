@@ -116,12 +116,12 @@ def model_train(model,
                 iou = iou + iou_
                 
                 ### aux loss ###
-                gt_mask_down = F.interpolate(gt_mask, size=(64, 64), mode='bilinear', align_corners=False)
+                gt_mask_down = F.interpolate(gt_mask.unsqueeze(0).unsqueeze(0), size=(64, 64), mode='bilinear', align_corners=False)
                 aux_feature = batched_output[i]['aux_feature']
                 
-                cad_loss_ = bce_loss(aux_feature, gt_mask_down.unsqueeze(0)) + iou_loss(aux_feature, gt_mask_down.unsqueeze(0))
+                cad_loss_ = bceloss(aux_feature.unsqueeze(0), gt_mask_down.squeeze(0)) + iouloss(aux_feature.unsqueeze(0), gt_mask_down.squeeze(0))
                 cad_loss = cad_loss + cad_loss_
-
+                
             # average loss & metrcis (mini-batch)
             loss = loss / y_torch.shape[0]
             bce_loss = bce_loss / y_torch.shape[0]
@@ -213,10 +213,10 @@ def model_train(model,
                 iou = iou + iou_
                 
                 ### aux loss ###
-                gt_mask_down = F.interpolate(gt_mask, size=(64, 64), mode='bilinear', align_corners=False)
+                gt_mask_down = F.interpolate(gt_mask.unsqueeze(0).unsqueeze(0), size=(64, 64), mode='bilinear', align_corners=False)
                 aux_feature = batched_output[i]['aux_feature']
                 
-                cad_loss_ = bce_loss(aux_feature, gt_mask_down.unsqueeze(0)) + iou_loss(aux_feature, gt_mask_down.unsqueeze(0))
+                cad_loss_ = bceloss(aux_feature.unsqueeze(0), gt_mask_down.squeeze(0)) + iouloss(aux_feature.unsqueeze(0), gt_mask_down.squeeze(0))
                 cad_loss = cad_loss + cad_loss_
 
             # average loss & metrcis (mini-batch)
