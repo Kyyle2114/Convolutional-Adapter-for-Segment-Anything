@@ -35,7 +35,9 @@ class ConvAdapter(nn.Module):
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         # N: batch size  
         # x: (N, C, H, W) size tensor
-        x = x / 255.
+        m = torch.amax(x, dim=(2, 3), keepdim=True) + 1e-5
+        x = x / m
+        
         x = self.conv_up(x)
         
         # H, W: 512 -> 256
@@ -72,7 +74,7 @@ class ConvBlock(nn.Module):
         
         self.bn = nn.BatchNorm2d(channel)
                 
-        self.relu = nn.ReLU()
+        self.act_layer = nn.LeakyReLU(0.1)
         
         self.avg_pool = nn.AvgPool2d(
             kernel_size=2,
@@ -84,7 +86,7 @@ class ConvBlock(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         shortcut = x 
         
-        x = self.relu(self.bn(self.conv(x)))
+        x = self.act_layer(self.bn(self.conv(x)))
                 
         # skip connection
         x = x + shortcut
