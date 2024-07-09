@@ -51,6 +51,10 @@ def get_args_parser():
     parser.add_argument('--lr', type=float, default=2e-4, help='initial learning rate')
     parser.add_argument('--project_name', type=str, default='Fine-tuning-SAM', help='WandB project name')
     parser.add_argument('--local_rank', type=int)
+    parser.add_argument('--train_image_dir', type=str, default='dataset/train/image', help='train dataset image dir')
+    parser.add_argument('--train_mask_dir', type=str, default='dataset/train/mask', help='train dataset mask dir')
+    parser.add_argument('--val_image_dir', type=str, default='dataset/val/image', help='valid dataset image dir')
+    parser.add_argument('--val_mask_dir', type=str, default='dataset/val/mask', help='valid dataset mask dir')
     
     return parser
 
@@ -89,14 +93,14 @@ def main(rank, opts) -> str:
     ])
     
     train_set = dataset.make_dataset(
-        image_dir='datasets/train/image',
-        mask_dir='datasets/train/mask',
+        image_dir=opts.train_image_dir,
+        mask_dir=opts.train_mask_dir,
         transform=transform
     )
     
     val_set = dataset.make_dataset(
-        image_dir='datasets/valid/image',
-        mask_dir='datasets/valid/mask'
+        image_dir=opts.val_image_dir,
+        mask_dir=opts.val_mask_dir
     )
     
     if opts.dist:

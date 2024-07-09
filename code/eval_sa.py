@@ -19,7 +19,9 @@ def get_args_parser():
     parser.add_argument('--seed', type=int, default=21, help='random seed')
     parser.add_argument('--model_type', type=str, default='vit_b', help='SAM model type')
     parser.add_argument('--checkpoint', type=str, default='sam_vit_b.pt', help='SAM model checkpoint')
-    parser.add_argument('--dataset', type=int, default='1', help='test dataset option')
+    parser.add_argument('--adapter_checkpoint', type=str, default='checkpoints/sam_sa.pth', help='Adapter checkpoint')
+    parser.add_argument('--test_image_dir', type=str, default='dataset/test/image', help='test dataset image dir')
+    parser.add_argument('--test_mask_dir', type=str, default='dataset/test/mask', help='test dataset mask dir')
     
     return parser
 
@@ -34,8 +36,8 @@ def main(opts):
     
     ### dataset & dataloader ### 
     test_set = dataset.make_dataset(
-        image_dir=f'datasets/test/test{opts.dataset}/image',
-        mask_dir=f'datasets/test/test{opts.dataset}/mask'
+        image_dir=opts.test_image_dir,
+        mask_dir=opts.test_mask_dir
     )
     
     test_loader = DataLoader(
@@ -63,7 +65,7 @@ def main(opts):
     
     sam = save_weight.load_partial_weight(
         model=sam,
-        load_path='/checkpoints/sam_sa.pth',
+        load_path=opts.adapter_checkpoint,
         dist=False
     )
     
