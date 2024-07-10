@@ -9,17 +9,12 @@ from torch.utils.data import DataLoader
 
 import argparse
 
-# if use single-gpu
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0' 
-
 def get_args_parser():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--batch_size', type=int, default=1, help='batch size allocated to GPU')
     parser.add_argument('--seed', type=int, default=21, help='random seed')
     parser.add_argument('--model_type', type=str, default='vit_b', help='SAM model type')
     parser.add_argument('--checkpoint', type=str, default='sam_vit_b.pt', help='SAM model checkpoint')
-    parser.add_argument('--adapter_checkpoint', type=str, default='checkpoints/sam_sa.pth', help='Adapter checkpoint')
     parser.add_argument('--test_image_dir', type=str, default='dataset/test/image', help='test dataset image dir')
     parser.add_argument('--test_mask_dir', type=str, default='dataset/test/mask', help='test dataset mask dir')
     
@@ -62,12 +57,6 @@ def main(opts):
     sam = sam_model_registry[model_type](adapter_config=adapter_config, checkpoint=sam_checkpoint)
     sam.to(device)
     sam.eval()
-    
-    sam = save_weight.load_partial_weight(
-        model=sam,
-        load_path=opts.adapter_checkpoint,
-        dist=False
-    )
     
     # freezing parameters
     for _, p in sam.named_parameters():

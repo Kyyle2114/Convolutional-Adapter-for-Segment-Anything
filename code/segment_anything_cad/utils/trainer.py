@@ -6,7 +6,6 @@ from tqdm import tqdm
 from typing import Tuple
 
 from .transforms import ResizeLongestSide
-from .make_prompt import *
 from .metrics import *
 from .fft import *
 
@@ -66,13 +65,8 @@ def model_train(model,
                 image = transform.apply_image(image)
                 image = torch.as_tensor(image, dtype=torch.float, device=device)
                 image = image.permute(2, 0, 1).contiguous()
-                
-                box = make_box_prompt(
-                    mask=mask.cpu().numpy(), 
-                    scale_factor=1.0,
-                    return_xyxy=True
-                )
-                
+                               
+                box = np.array([0, 0, original_size[0], original_size[1]])
                 box = transform.apply_boxes(box, original_size)
                 box_torch = torch.as_tensor(box, dtype=torch.float, device=device)
                 box_torch = box_torch[None, :]
@@ -164,12 +158,7 @@ def model_train(model,
                 image = torch.as_tensor(image, dtype=torch.float, device=device)
                 image = image.permute(2, 0, 1).contiguous()
                 
-                box = make_box_prompt(
-                    mask=mask.cpu().numpy(), 
-                    scale_factor=1.0,
-                    return_xyxy=True
-                )
-                
+                box = np.array([0, 0, original_size[0], original_size[1]])
                 box = transform.apply_boxes(box, original_size)
                 box_torch = torch.as_tensor(box, dtype=torch.float, device=device)
                 box_torch = box_torch[None, :]
@@ -301,12 +290,7 @@ def model_evaluate(model,
                 image = torch.as_tensor(image, dtype=torch.float, device=device)
                 image = image.permute(2, 0, 1).contiguous()
                 
-                box = make_box_prompt(
-                    mask=mask.cpu().numpy(), 
-                    scale_factor=1.0,
-                    return_xyxy=True
-                )
-                
+                box = np.array([0, 0, original_size[0], original_size[1]])
                 box = transform.apply_boxes(box, original_size)
                 box_torch = torch.as_tensor(box, dtype=torch.float, device=device)
                 box_torch = box_torch[None, :]

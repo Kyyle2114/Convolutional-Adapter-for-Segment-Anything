@@ -26,9 +26,7 @@ import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '0' 
 
 CHECKPOINT_DIR = 'checkpoints'
-CHECKPOINT_ALL_DIR = 'checkpoints/sa'
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
-os.makedirs(CHECKPOINT_ALL_DIR, exist_ok=True)
 
 # vanila sam param list
 with open('sam_params.pkl', 'rb') as f:
@@ -103,11 +101,6 @@ def main(rank, opts) -> str:
         transform=transform
     )
     
-    val_set = dataset.make_dataset(
-        image_dir=opts.val_image_dir,
-        mask_dir=opts.val_mask_dir
-    )
-    
     if opts.dist:
         train_sampler = DistributedSampler(dataset=train_set, shuffle=True, seed=opts.seed)
         batch_sampler_train = BatchSampler(train_sampler, opts.batch_size, drop_last=True)
@@ -121,12 +114,6 @@ def main(rank, opts) -> str:
             num_workers=opts.num_workers
         )
 
-    val_loader = DataLoader(
-        val_set, 
-        batch_size=opts.batch_size, 
-        shuffle=False
-    )
-    
     ### SAM config ### 
     sam_checkpoint = opts.checkpoint
     model_type = opts.model_type
@@ -176,9 +163,6 @@ def main(rank, opts) -> str:
 
     EPOCHS = opts.epoch
     lr = opts.lr
-    # EarlyStopping : Determined based on the validation loss. Lower is better(mode='min').
-    es = trainer.EarlyStopping(patience=EPOCHS//2, delta=0, mode='min', verbose=True)
-    es_signal = torch.tensor([0]).to(local_gpu_id)
     optimizer = torch.optim.AdamW(
         model.parameters(), 
         lr=lr
@@ -203,17 +187,7 @@ def main(rank, opts) -> str:
         wandb.run.summary['initial lr'] = lr
         wandb.run.summary['total epoch'] = EPOCHS
     
-    max_loss = np.inf 
-    
     for epoch in range(EPOCHS):
-        
-        # EarlyStopping
-        if opts.dist:
-            dist.barrier()  
-            dist.all_reduce(es_signal, op=dist.ReduceOp.SUM) 
-            
-        if es_signal.item() == 1:
-            break
         
         if opts.dist:
             train_sampler.set_epoch(epoch)
@@ -250,14 +224,6 @@ def main(rank, opts) -> str:
             train_iou = train_iou.item()
         
         if opts.rank == 0:
-            val_bce_loss, val_iou_loss, val_dice, val_iou = trainer.model_evaluate(
-                model=model,
-                data_loader=val_loader,
-                criterion=[bceloss, iouloss],
-                device=f"cuda:{local_gpu_id}"
-            )
-            
-            val_loss = val_bce_loss + val_iou_loss
             
             wandb.log(
                 {
@@ -267,35 +233,14 @@ def main(rank, opts) -> str:
                     'Train IoU Metric': train_iou
                 }, step=epoch+1
             )
-        
-            wandb.log(
-                {
-                    'Validation BCE Loss': val_bce_loss,
-                    'Validation IoU Loss': val_iou_loss,
-                    'Validation Dice Metric': val_dice,
-                    'Validation IoU Metric': val_iou
-                }, step=epoch+1
-            )
-            
-            # Check EarlyStopping
-            es(val_loss)
-            if es.early_stop:
-                es_signal = torch.tensor([1]).to(local_gpu_id)
-                continue
-        
-            ### Save best model ###
-            if val_loss < max_loss:
-                print(f'[INFO] val_loss has been improved from {max_loss:.5f} to {val_loss:.5f}. Save model.')
-                max_loss = val_loss
-                _ = save_weight.save_partial_weight(model=sam, save_path=save_path)
             
             ### print current loss / metric ###
-            print(f'epoch {epoch+1:02d}, bce_loss: {train_bce_loss:.5f}, iou_loss: {train_iou_loss:.5f}, dice: {train_dice:.5f}, iou: {train_iou:.5f},', end=' ')
-            print(f'val_bce_loss: {val_bce_loss:.5f}, val_iou_loss: {val_iou_loss:.5f}, val_dice: {val_dice:.5f}, val_iou: {val_iou:.5f} \n')
+            print(f'epoch {epoch+1:02d}, bce_loss: {train_bce_loss:.5f}, iou_loss: {train_iou_loss:.5f}, dice: {train_dice:.5f}, iou: {train_iou:.5f}')
 
-            # save model
-            _ = save_weight.save_partial_weight(model=sam, save_path=f'{CHECKPOINT_ALL_DIR}/{epoch+1}.pth')
-            
+    ### save model ### 
+    if opts.rank == 0:
+        torch.save(model.state_dict(), save_path)
+    
     print(f'Model checkpoint saved at: {save_path} \n') 
     
     return
