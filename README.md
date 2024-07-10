@@ -24,7 +24,7 @@ pip install -r requirements.txt
 
 - Move to ```code/``` directory
 - [Download the checkpoint](https://github.com/facebookresearch/segment-anything?tab=readme-ov-file#model-checkpoints) for Segment Anything corresponding to the model type(e.g., ```vit_b```).
-- Inside ```run.sh```, set the appropriate dataset path (train, validation)
+- Inside ```run.sh```, set the appropriate dataset path 
 - You can check the meaning of each argument in argparse at the top of ```run_cad.py```, ```run_sa.py```
 - Running ```./run.sh``` will train the both model
 

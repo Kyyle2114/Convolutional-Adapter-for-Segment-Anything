@@ -51,8 +51,6 @@ def get_args_parser():
     parser.add_argument('--local_rank', type=int)
     parser.add_argument('--train_image_dir', type=str, default='dataset/train/image', help='train dataset image dir')
     parser.add_argument('--train_mask_dir', type=str, default='dataset/train/mask', help='train dataset mask dir')
-    parser.add_argument('--val_image_dir', type=str, default='dataset/val/image', help='valid dataset image dir')
-    parser.add_argument('--val_mask_dir', type=str, default='dataset/val/mask', help='valid dataset mask dir')
     
     return parser
 
@@ -182,7 +180,7 @@ def main(rank, opts) -> str:
         if opts.dist:
             train_sampler.set_epoch(epoch)
         
-        ### model train / validation ###
+        ### model train ###
         train_bce_loss, train_iou_loss, train_dice, train_iou = trainer.model_train(
             model=model,
             data_loader=train_loader,
