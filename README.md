@@ -17,6 +17,11 @@ We proposed memory efficient convolutional adapter for Segment Anything(SAM).
 ## Enviornment
 
 ```bash 
+# create a virtual env and activate
+conda create -n cad python=3.8
+conda activate cad 
+
+# download packages
 pip install -r requirements.txt 
 ```
 

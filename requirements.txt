@@ -1,0 +1,8 @@
+albumentations
+opencv-python
+numpy
+torch
+torchinfo
+torchvision
+tqdm
+wandb
