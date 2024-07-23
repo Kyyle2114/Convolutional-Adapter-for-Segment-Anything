@@ -14,7 +14,7 @@ AIaaS Laboratory, Kwangwoon University
 
 We proposed memory efficient convolutional adapter for Segment Anything(SAM). 
 
-## Enviornment
+## Environment
 
 ```bash 
 # create a virtual env and activate
