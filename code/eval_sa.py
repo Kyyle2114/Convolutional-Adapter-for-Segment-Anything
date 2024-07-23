@@ -8,13 +8,14 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 import argparse
+import albumentations as A
 
 def get_args_parser():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--batch_size', type=int, default=1, help='batch size allocated to GPU')
     parser.add_argument('--seed', type=int, default=21, help='random seed')
     parser.add_argument('--model_type', type=str, default='vit_b', help='SAM model type')
-    parser.add_argument('--checkpoint', type=str, default='sam_vit_b.pt', help='SAM model checkpoint')
+    parser.add_argument('--checkpoint', type=str, default='sam_vit_b.pth', help='SAM model checkpoint')
     parser.add_argument('--test_image_dir', type=str, default='dataset/test/image', help='test dataset image dir')
     parser.add_argument('--test_mask_dir', type=str, default='dataset/test/mask', help='test dataset mask dir')
     
@@ -32,7 +33,8 @@ def main(opts):
     ### dataset & dataloader ### 
     test_set = dataset.make_dataset(
         image_dir=opts.test_image_dir,
-        mask_dir=opts.test_mask_dir
+        mask_dir=opts.test_mask_dir,
+        transform=A.Resize(512, 512)
     )
     
     test_loader = DataLoader(

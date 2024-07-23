@@ -49,7 +49,7 @@ def get_args_parser():
     parser.add_argument('--dist', type=str2bool, default=True, help='if True, use multi-gpu(distributed) training')
     parser.add_argument('--seed', type=int, default=21, help='random seed')
     parser.add_argument('--model_type', type=str, default='vit_b', help='SAM model type')
-    parser.add_argument('--checkpoint', type=str, default='sam_vit_b.pt', help='SAM model checkpoint')
+    parser.add_argument('--checkpoint', type=str, default='sam_vit_b.pth', help='SAM model checkpoint')
     parser.add_argument('--epoch', type=int, default=10, help='total epoch')
     parser.add_argument('--lr', type=float, default=2e-4, help='initial learning rate')
     parser.add_argument('--project_name', type=str, default='Fine-tuning-SAM', help='WandB project name')
@@ -85,6 +85,7 @@ def main(rank, opts) -> str:
     ### dataset & dataloader ### 
     # data augmentation for train image & mask 
     transform = A.Compose([
+        A.Resize(512, 512),
         A.OneOf([
             A.HorizontalFlip(p=1),
             A.VerticalFlip(p=1),
