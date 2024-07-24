@@ -55,7 +55,7 @@ class ConvAdapter(nn.Module):
         
         x = p1 + p2 + p3
         
-        return torch.tanh(x), torch.sigmoid(torch.mean(x, dim=1))
+        return torch.tanh(x)
 
 class ConvBlock(nn.Module):
     def __init__(self,

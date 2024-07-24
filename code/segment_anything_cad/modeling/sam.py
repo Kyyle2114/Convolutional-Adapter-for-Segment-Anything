@@ -110,7 +110,7 @@ class Sam(nn.Module):
         
         # concat with C channel 
         original_images = torch.cat((original_images, ffts), dim=1)
-        features, aux_features = self.conv_adapter(original_images) 
+        features = self.conv_adapter(original_images) 
         
         with torch.no_grad():
             image_embeddings = self.image_encoder(input_images)
@@ -119,7 +119,7 @@ class Sam(nn.Module):
 
         outputs = []
         
-        for image_record, curr_embedding, aux_feature in zip(batched_input, features, aux_features):
+        for image_record, curr_embedding in zip(batched_input, features):
           
             if "point_coords" in image_record:
                 points = (image_record["point_coords"], image_record["point_labels"])
@@ -153,8 +153,7 @@ class Sam(nn.Module):
             outputs.append(
                 {
                     "masks": masks,
-                    "masks_pred": masks_pred,
-                    "aux_feature": aux_feature
+                    "masks_pred": masks_pred
                 }
             )
         return outputs
