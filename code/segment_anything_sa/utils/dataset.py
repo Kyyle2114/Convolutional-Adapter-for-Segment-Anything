@@ -12,8 +12,8 @@ class CustomDataset(Dataset):
         self.mask_dir = mask_dir
         self.transform = transform
         
-        self.data_images = os.listdir(image_dir)
-        self.mask_images = os.listdir(mask_dir)
+        self.data_images = sorted(os.listdir(image_dir))
+        self.mask_images = sorted(os.listdir(mask_dir))
         
         assert len(self.data_images) == len(self.mask_images), "<Error> The number of images and the number of masks must be the same."
 
@@ -26,6 +26,8 @@ class CustomDataset(Dataset):
         
         mask = cv2.imread(mask_path)
         mask = cv2.cvtColor(mask, cv2.COLOR_BGR2RGB)
+        
+        mask[mask != 0] = 1 
 
         if self.transform:
             augmentations = self.transform(image=image, mask=mask)
@@ -37,9 +39,11 @@ class CustomDataset(Dataset):
     def __len__(self):
         return len(self.mask_images)
     
-def make_dataset(image_dir: str,
-                 mask_dir: str,
-                 transform = None) -> Type[torch.utils.data.Dataset]:
+def make_dataset(
+    image_dir: str,
+    mask_dir: str,
+    transform = None
+) -> Type[torch.utils.data.Dataset]:
     """
     Make pytorch Dataset for given task.
     Read the image using the opencv library and return it as an np.array.
@@ -53,8 +57,10 @@ def make_dataset(image_dir: str,
         torch.Dataset: pytorch Dataset
     """
         
-    dataset = CustomDataset(image_dir=image_dir,
-                            mask_dir=mask_dir,
-                            transform=transform)
+    dataset = CustomDataset(
+        image_dir=image_dir,
+        mask_dir=mask_dir,
+        transform=transform
+    )
         
     return dataset
