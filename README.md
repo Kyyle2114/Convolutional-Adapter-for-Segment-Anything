@@ -12,7 +12,7 @@ AIaaS Laboratory, Kwangwoon University
 
 ![alt text](assets/cad.png)
 
-We proposed memory efficient convolutional adapter for Segment Anything(SAM). 
+We proposed memory efficient convolutional adapter architecture for Segment Anything (SAM). This architecture connects in parallel with SAM's image encoder, eliminating the need to store activations and gradients of the image encoder during model training.
 
 ## Environment
 
@@ -27,6 +27,8 @@ pip install -r requirements.txt
 
 ## How to Use 
 
+### Train 
+
 - Move to ```code/``` directory
 - [Download the checkpoint](https://github.com/facebookresearch/segment-anything?tab=readme-ov-file#model-checkpoints) for Segment Anything corresponding to the model type(e.g., ```vit_b```).
 - Inside ```run.sh```, set the appropriate dataset path 
@@ -35,6 +37,19 @@ pip install -r requirements.txt
 
 All training processes are logged using **WandB(Weights & Biases)**. To modify the wandb project name, modify the ```--project_name``` argument.
 
+### Test
+
 After model training is complete, the model weights are saved under the ```checkpoints/``` directory. The weight file name is saved based on the execution time (e.g., ```May21_172910.pth```). Rename this file to ```sam_cad.pth``` and ```sam_sa.pth```.
 
 If you want to evaluate the trained model, set the test dataset path inside ```eval.sh```, then run the ```./eval.sh```.
+
+## Dataset 
+
+### Camouflaged Object Detection
+- [COD10K](https://dengpingfan.github.io/pages/COD.html)
+- [CAMO](https://sites.google.com/view/ltnghia/research/camo)
+
+### Shadow Detection 
+- [ISTD](https://github.com/DeepInsight-PCALab/ST-CGAN)
+
+## Citation
