@@ -12,6 +12,9 @@ AIaaS Laboratory, Kwangwoon University
 
 ![alt text](assets/cad.png)
 
+![alt text](assets/infers.png)
+
+
 We proposed memory efficient convolutional adapter architecture for Segment Anything (SAM). This architecture connects in parallel with SAM's image encoder, eliminating the need to store activations and gradients of the image encoder during model training.
 
 ## Environment
@@ -45,11 +48,11 @@ If you want to evaluate the trained model, set the test dataset path inside ```e
 
 ## Dataset 
 
+We utilized two challenging tasks: Shadow detection and Camouflaged object detection.
+
 ### Camouflaged Object Detection
 - [COD10K](https://dengpingfan.github.io/pages/COD.html)
 - [CAMO](https://sites.google.com/view/ltnghia/research/camo)
 
 ### Shadow Detection 
 - [ISTD](https://github.com/DeepInsight-PCALab/ST-CGAN)
-
-## Citation
