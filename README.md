@@ -1,6 +1,6 @@
 # CAD : Memory Efficient Convolutional Adapter for Segment Anything
 
-JooHyeok Kim, SeoHwan Yun, JoonHyeon Song, SeongHo Yun
+Joohyeok Kim, Joonhyeon Song, Seohwan Yun, Seongho Yoon, Sangmin Lee
 
 AIaaS Laboratory, Kwangwoon University
 
