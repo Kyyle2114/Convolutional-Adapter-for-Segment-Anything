@@ -4,6 +4,8 @@ Joohyeok Kim, Joonhyeon Song, Seohwan Yun, Seongho Yoon, Sangmin Lee
 
 AIaaS Laboratory, Kwangwoon University
 
+<a href='https://arxiv.org/abs/2409.15889'><img src='https://img.shields.io/badge/ArXiv-2409.15889-red' /></a> 
+
 ## Abstract 
 
 > The Foundation model for image segmentation, Segment Anything (SAM), has been actively researched in various fields since its proposal. Various researches have been proposed to adapt SAM to specific domains, with one notable approach involving the addition and training of lightweight adapter modules. While adapter-based fine-tuning approaches have reported parameter efficiency and significant performance improvements, they face a often overlooked issue: the excessive consumption of GPU memory relative to the number of trainable parameters. Addressing this issue, this paper proposes a memory-efficient parallel convolutional adapter architecture. This architecture connects in parallel with SAM's image encoder, eliminating the need to store activations and gradients of the image encoder during model training. Our proposed architecture demonstrated competitive experimental results while using less than half the GPU memory compared to SAM Adapter, indicating its value as an alternative to simple decoder fine-tuning when hardware limitations preclude adapter-based learning.
